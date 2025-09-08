@@ -3,16 +3,50 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"sync/atomic"
 )
 
+type apiConfig struct {
+	fileServerHits atomic.Int32
+}
+
+func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cfg.fileServerHits.Add(1)
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (cfg *apiConfig) middlewareMeticsLog(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
+	nrHits := fmt.Sprintf("Hits: %d", cfg.fileServerHits.Load())
+	w.Write([]byte(nrHits))
+}
+
+func (cfg *apiConfig) middlewareMeticsReset(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	cfg.fileServerHits.Store(0)
+}
+
 func main() {
+	apiCfg := &apiConfig{
+		fileServerHits: atomic.Int32{},
+	}
 	mux := http.NewServeMux()
 	httpServer := &http.Server{}
 
 	httpServer.Addr = ":8080"
 	httpServer.Handler = mux
 
-	mux.Handle("/", http.FileServer(http.Dir("./")))
+	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("./app/")))))
+	mux.HandleFunc("GET /metrics", apiCfg.middlewareMeticsLog)
+	mux.HandleFunc("POST /reset", apiCfg.middlewareMeticsReset)
+	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(200)
+		w.Write([]byte("OK"))
+	})
 
 	defer httpServer.Close()
 
