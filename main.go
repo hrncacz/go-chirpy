@@ -19,8 +19,15 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 
 func (cfg *apiConfig) middlewareMeticsLog(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	nrHits := fmt.Sprintf("Hits: %d", cfg.fileServerHits.Load())
+	w.Header().Add("Content-Type", "text/html; charset=utf-8")
+	nrHits := fmt.Sprintf(`<html>
+  <body>
+    <h1>Welcome, Chirpy Admin</h1>
+    <p>Chirpy has been visited %d times!</p>
+  </body>
+</html>
+`, cfg.fileServerHits.Load())
+
 	w.Write([]byte(nrHits))
 }
 
@@ -38,11 +45,13 @@ func main() {
 
 	httpServer.Addr = ":8080"
 	httpServer.Handler = mux
-
+	//APP
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("./app/")))))
-	mux.HandleFunc("GET /metrics", apiCfg.middlewareMeticsLog)
-	mux.HandleFunc("POST /reset", apiCfg.middlewareMeticsReset)
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+	//ADMIN
+	mux.HandleFunc("GET /admin/metrics", apiCfg.middlewareMeticsLog)
+	mux.HandleFunc("POST /admin/reset", apiCfg.middlewareMeticsReset)
+	//API
+	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(200)
 		w.Write([]byte("OK"))
