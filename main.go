@@ -56,6 +56,7 @@ func main() {
 		w.WriteHeader(200)
 		w.Write([]byte("OK"))
 	})
+	mux.HandleFunc("POST /api/validate_chirp", validateChirp)
 
 	defer httpServer.Close()
 
