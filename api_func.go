@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"slices"
+	"strings"
 )
 
 func responseError(w http.ResponseWriter, errorMessage string, code int) {
@@ -27,13 +29,24 @@ func responseError(w http.ResponseWriter, errorMessage string, code int) {
 	w.Write(dat)
 }
 
+func cleanBody(text string) string {
+	profaneWords := []string{"KERFUFFLE", "SHARBERT", "FORNAX"}
+	splited := strings.Split(text, " ")
+	for i, word := range splited {
+		if slices.Contains(profaneWords, strings.ToUpper(word)) {
+			splited[i] = "****"
+		}
+	}
+	return strings.Join(splited, " ")
+}
+
 func validateChirp(w http.ResponseWriter, r *http.Request) {
 	type reqBody struct {
 		Body string `json:"body"`
 	}
 
 	type resBody struct {
-		Valid bool `json:"valid"`
+		CleanedBody string `json:"cleaned_body"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -52,8 +65,10 @@ func validateChirp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	cleanedBody := cleanBody(req.Body)
+
 	res := resBody{
-		Valid: true,
+		CleanedBody: cleanedBody,
 	}
 
 	dat, err := json.Marshal(res)
