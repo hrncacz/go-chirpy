@@ -74,8 +74,7 @@ func main() {
 
 	defer httpServer.Close()
 
-	err := httpServer.ListenAndServe()
-	if err != nil {
+	if err := httpServer.ListenAndServe(); err != nil {
 		fmt.Println("Error starting server:", err)
 		return
 	}

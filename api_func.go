@@ -1,11 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
 	"slices"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 func responseError(w http.ResponseWriter, errorMessage string, code int) {
@@ -80,5 +83,32 @@ func validateChirp(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(dat)
+
+}
+
+func createUser(w http.ResponseWriter, r *http.Request) {
+	type reqBody struct {
+		Email string `json:"email"`
+	}
+
+	type resBody struct {
+		ID        uuid.UUID      `json:"id"`
+		CreatedAt sql.NullTime   `json:"created_at"`
+		UpdatedAt sql.NullTime   `json:"updated_at"`
+		Email     sql.NullString `json:"email"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	req := reqBody{}
+
+	err := decoder.Decode(&req)
+	if err != nil {
+		errorMessage := "Something went wrong"
+		responseError(w, errorMessage, http.StatusBadRequest)
+		return
+	}
+
+	user, err := 
+
 
 }
