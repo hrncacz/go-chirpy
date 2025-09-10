@@ -1,13 +1,20 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/hrncacz/go-chirpy/internal/database"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileServerHits atomic.Int32
+	db             *database.Queries
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -37,8 +44,15 @@ func (cfg *apiConfig) middlewareMeticsReset(w http.ResponseWriter, r *http.Reque
 }
 
 func main() {
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	dbQueries := database.New(db)
 	apiCfg := &apiConfig{
 		fileServerHits: atomic.Int32{},
+		db:             dbQueries,
 	}
 	mux := http.NewServeMux()
 	httpServer := &http.Server{}
