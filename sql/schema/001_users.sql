@@ -1,7 +1,7 @@
 -- +goose Up
 CREATE TABLE users (
 	id UUID PRIMARY KEY,
-	create_at TIMESTAMP,
+	created_at TIMESTAMP,
 	updated_at TIMESTAMP,
 	email TEXT
 );

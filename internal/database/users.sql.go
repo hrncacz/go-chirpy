@@ -18,7 +18,7 @@ VALUES (
 	NOW(),
 	$1
 )
-RETURNING id, create_at, updated_at, email
+RETURNING id, created_at, updated_at, email
 `
 
 func (q *Queries) CreateUser(ctx context.Context, email sql.NullString) (User, error) {
@@ -26,9 +26,18 @@ func (q *Queries) CreateUser(ctx context.Context, email sql.NullString) (User, e
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.CreateAt,
+		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Email,
 	)
 	return i, err
+}
+
+const reset = `-- name: Reset :exec
+DELETE FROM users
+`
+
+func (q *Queries) Reset(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, reset)
+	return err
 }

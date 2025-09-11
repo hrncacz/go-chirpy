@@ -9,12 +9,14 @@ import (
 	"sync/atomic"
 
 	"github.com/hrncacz/go-chirpy/internal/database"
+	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileServerHits atomic.Int32
 	db             *database.Queries
+	dev            bool
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -39,12 +41,25 @@ func (cfg *apiConfig) middlewareMeticsLog(w http.ResponseWriter, r *http.Request
 }
 
 func (cfg *apiConfig) middlewareMeticsReset(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
+	if !cfg.dev {
+		w.WriteHeader(403)
+		return
+	}
+	if err := cfg.db.Reset(r.Context()); err != nil {
+		w.WriteHeader(500)
+		return
+	}
 	cfg.fileServerHits.Store(0)
+	w.WriteHeader(http.StatusOK)
 }
 
 func main() {
+	err := godotenv.Load("./.env")
+	if err != nil {
+		log.Fatalln(err)
+	}
 	dbURL := os.Getenv("DB_URL")
+	dev := os.Getenv("PLATFORM")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal(err)
@@ -53,6 +68,10 @@ func main() {
 	apiCfg := &apiConfig{
 		fileServerHits: atomic.Int32{},
 		db:             dbQueries,
+		dev:            false,
+	}
+	if dev == "dev" {
+		apiCfg.dev = true
 	}
 	mux := http.NewServeMux()
 	httpServer := &http.Server{}
@@ -71,6 +90,7 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 	mux.HandleFunc("POST /api/validate_chirp", validateChirp)
+	mux.HandleFunc("POST /api/users", createUser(apiCfg))
 
 	defer httpServer.Close()
 
