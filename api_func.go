@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"slices"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,60 +31,6 @@ func responseError(w http.ResponseWriter, errorMessage string, code int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	w.Write(dat)
-}
-
-func cleanBody(text string) string {
-	profaneWords := []string{"KERFUFFLE", "SHARBERT", "FORNAX"}
-	splited := strings.Split(text, " ")
-	for i, word := range splited {
-		if slices.Contains(profaneWords, strings.ToUpper(word)) {
-			splited[i] = "****"
-		}
-	}
-	return strings.Join(splited, " ")
-}
-
-func validateChirp(w http.ResponseWriter, r *http.Request) {
-	type reqBody struct {
-		Body string `json:"body"`
-	}
-
-	type resBody struct {
-		CleanedBody string `json:"cleaned_body"`
-	}
-
-	decoder := json.NewDecoder(r.Body)
-	req := reqBody{}
-
-	err := decoder.Decode(&req)
-	if err != nil {
-		errorMessage := "Something went wrong"
-		responseError(w, errorMessage, http.StatusBadRequest)
-		return
-	}
-
-	if len(req.Body) > 140 {
-		errorMessage := "Chirp is too long"
-		responseError(w, errorMessage, 400)
-		return
-	}
-
-	cleanedBody := cleanBody(req.Body)
-
-	res := resBody{
-		CleanedBody: cleanedBody,
-	}
-
-	dat, err := json.Marshal(res)
-	if err != nil {
-		errorMessage := "Cannot marshal response"
-		responseError(w, errorMessage, 500)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-	w.Write(dat)
-
 }
 
 func createUser(cfg *apiConfig) http.HandlerFunc {
@@ -139,13 +83,40 @@ func createUser(cfg *apiConfig) http.HandlerFunc {
 
 }
 
-func getChirps(cfg *apiConfig) http.HandlerFunc {
+func getChirpsAll(cfg *apiConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		chirps, err := cfg.db.GetAllChirps(r.Context())
+		chirps, err := cfg.db.GetChirpsAll(r.Context())
 		if err != nil {
 			fmt.Println(err)
 			errorMessage := "Cannot retrieve chirps"
 			responseError(w, errorMessage, 500)
+			return
+		}
+		data, err := json.Marshal(chirps)
+		if err != nil {
+			errorMessage := "Cannot marshal response"
+			responseError(w, errorMessage, 500)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(data)
+	}
+}
+
+func getChirpsOne(cfg *apiConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		chirpIDString := r.PathValue("chirpID")
+		chirpID, err := uuid.Parse(chirpIDString)
+		if err != nil {
+			errorMessage := "Invalid chirp ID"
+			responseError(w, errorMessage, 400)
+			return
+		}
+		chirps, err := cfg.db.GetChirpsOne(r.Context(), chirpID)
+		if err != nil {
+			errorMessage := fmt.Sprintf("Chirp was not found: %s", chirpIDString)
+			responseError(w, errorMessage, 404)
 			return
 		}
 		data, err := json.Marshal(chirps)
@@ -176,7 +147,6 @@ func createChirp(cfg *apiConfig) http.HandlerFunc {
 			errorMessage := "Something went wrong"
 			responseError(w, errorMessage, http.StatusBadRequest)
 			return
-
 		}
 
 		if len(req.Body) > 140 {
