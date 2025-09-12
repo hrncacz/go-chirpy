@@ -89,9 +89,9 @@ func main() {
 		w.WriteHeader(200)
 		w.Write([]byte("OK"))
 	})
-	// mux.HandleFunc("POST /api/validate_chirp", validateChirp)
 	mux.HandleFunc("POST /api/users", createUser(apiCfg))
-	mux.HandleFunc("POST /api/", createChirp(apiCfg))
+	mux.Handle("GET /api/chirps", getChirps(apiCfg))
+	mux.HandleFunc("POST /api/chirps", createChirp(apiCfg))
 
 	defer httpServer.Close()
 
