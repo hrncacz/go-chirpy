@@ -90,9 +90,10 @@ func main() {
 		w.Write([]byte("OK"))
 	})
 	mux.HandleFunc("POST /api/users", createUser(apiCfg))
-	mux.Handle("GET /api/chirps", getChirpsAll(apiCfg))
-	mux.Handle("GET /api/chirps/{chirpID}", getChirpsOne(apiCfg))
+	mux.HandleFunc("GET /api/chirps", getChirpsAll(apiCfg))
+	mux.HandleFunc("GET /api/chirps/{chirpID}", getChirpsOne(apiCfg))
 	mux.HandleFunc("POST /api/chirps", createChirp(apiCfg))
+	mux.HandleFunc("POST /api/login", login(apiCfg))
 
 	defer httpServer.Close()
 

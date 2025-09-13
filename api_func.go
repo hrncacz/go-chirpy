@@ -1,7 +1,6 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -9,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hrncacz/go-chirpy/internal/auth"
 	"github.com/hrncacz/go-chirpy/internal/database"
 )
 
@@ -36,7 +36,8 @@ func responseError(w http.ResponseWriter, errorMessage string, code int) {
 func createUser(cfg *apiConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type reqBody struct {
-			Email string `json:"email"`
+			Email    string `json:"email"`
+			Password string `json:"password"`
 		}
 
 		type resBody struct {
@@ -57,7 +58,18 @@ func createUser(cfg *apiConfig) http.HandlerFunc {
 			return
 		}
 
-		user, err := cfg.db.CreateUser(r.Context(), sql.NullString{String: req.Email, Valid: true})
+		hashedPassword, err := auth.HashPassword(req.Password)
+		if err != nil {
+			fmt.Println(err)
+			errorMessage := "Cannot create user"
+			responseError(w, errorMessage, 500)
+			return
+		}
+
+		user, err := cfg.db.CreateUser(r.Context(), database.CreateUserParams{
+			Email:          req.Email,
+			HashedPassword: hashedPassword,
+		})
 		if err != nil {
 			fmt.Println(err)
 			errorMessage := "Cannot retrieve user"
@@ -66,9 +78,9 @@ func createUser(cfg *apiConfig) http.HandlerFunc {
 		}
 		res := resBody{
 			ID:        user.ID,
-			CreatedAt: user.CreatedAt.Time,
-			UpdatedAt: user.UpdatedAt.Time,
-			Email:     user.Email.String,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
 		}
 		data, err := json.Marshal(res)
 		if err != nil {
@@ -175,5 +187,54 @@ func createChirp(cfg *apiConfig) http.HandlerFunc {
 		w.WriteHeader(201)
 		w.Write(data)
 
+	}
+}
+
+func login(cfg *apiConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		type reqBody struct {
+			Email    string `json:"email"`
+			Password string `json:"password"`
+		}
+		type resBody struct {
+			ID        uuid.UUID `json:"id"`
+			CreatedAt time.Time `json:"created_at"`
+			UpdatedAt time.Time `json:"updated_at"`
+			Email     string    `json:"email"`
+		}
+		decoder := json.NewDecoder(r.Body)
+		req := reqBody{}
+		err := decoder.Decode(&req)
+		if err != nil {
+			errorMessage := "Something went wrong"
+			responseError(w, errorMessage, http.StatusBadRequest)
+			return
+		}
+		user, err := cfg.db.GetUserByEmail(r.Context(), req.Email)
+		if err != nil {
+			errorMessage := "Unauthorized"
+			responseError(w, errorMessage, 401)
+			return
+		}
+		if err := auth.CheckPasswordHash(req.Password, user.HashedPassword); err != nil {
+			errorMessage := "Unauthorized"
+			responseError(w, errorMessage, 401)
+			return
+		}
+		res := resBody{
+			ID:        user.ID,
+			CreatedAt: user.CreatedAt,
+			UpdatedAt: user.UpdatedAt,
+			Email:     user.Email,
+		}
+		data, err := json.Marshal(res)
+		if err != nil {
+			errorMessage := "Cannot marshal response"
+			responseError(w, errorMessage, 500)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(200)
+		w.Write(data)
 	}
 }
