@@ -3,9 +3,12 @@ package auth
 import (
 	"fmt"
 	"testing"
+	"time"
+
+	"github.com/google/uuid"
 )
 
-func TestHashPassword(t *testing.T) {
+func TestHashCheckPassword(t *testing.T) {
 	cases := []struct {
 		inputPasswordToHash  string
 		inputPasswordToCheck string
@@ -42,5 +45,49 @@ func TestHashPassword(t *testing.T) {
 				continue
 			}
 		}
+	}
+}
+
+func TestCreateValidateJWT(t *testing.T) {
+	cases := []struct {
+		userID        uuid.UUID
+		signingSecret string
+		expiresIn     time.Duration
+		waitTime      time.Duration
+		expected      bool
+	}{
+		{
+			userID:        uuid.New(),
+			signingSecret: "hello world",
+			expiresIn:     time.Duration(2 * time.Second),
+			waitTime:      time.Duration(1 * time.Second),
+			expected:      true,
+		},
+		{
+			userID:        uuid.New(),
+			signingSecret: "hello world",
+			expiresIn:     time.Duration(2 * time.Second),
+			waitTime:      time.Duration(3 * time.Second),
+			expected:      false,
+		},
+	}
+
+	for _, c := range cases {
+		token, err := MakeJWT(c.userID, c.signingSecret, c.expiresIn)
+		if err != nil {
+			t.Errorf("Error while creating JWT: %s", err)
+			continue
+		}
+		time.Sleep(c.waitTime)
+		userID, err := ValidateJWT(token, c.signingSecret)
+		if err != nil && c.expected {
+			t.Errorf("Error while validating JWT: %s", err)
+			continue
+		}
+		if userID != c.userID && c.expected {
+			t.Errorf("Returned user ID is not same as input user ID:\n\tInput ID: %s\n\tOutput ID: %s", c.userID.String(), userID.String())
+			continue
+		}
+		continue
 	}
 }
