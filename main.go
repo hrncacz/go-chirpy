@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"sync/atomic"
+	"time"
 
 	"github.com/hrncacz/go-chirpy/internal/database"
 	"github.com/joho/godotenv"
@@ -18,6 +19,7 @@ type apiConfig struct {
 	db             *database.Queries
 	dev            bool
 	jwtSignString  string
+	jwtExpiration  time.Duration
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -72,6 +74,7 @@ func main() {
 		db:             dbQueries,
 		dev:            false,
 		jwtSignString:  jwtSecret,
+		jwtExpiration:  1 * time.Hour,
 	}
 	if dev == "dev" {
 		apiCfg.dev = true
@@ -97,6 +100,8 @@ func main() {
 	mux.HandleFunc("GET /api/chirps/{chirpID}", getChirpsOne(apiCfg))
 	mux.HandleFunc("POST /api/chirps", createChirp(apiCfg))
 	mux.HandleFunc("POST /api/login", login(apiCfg))
+	mux.HandleFunc("POST /api/refresh", refresh(apiCfg))
+	mux.HandleFunc("POST /api/revoke", revoke(apiCfg))
 
 	defer httpServer.Close()
 
