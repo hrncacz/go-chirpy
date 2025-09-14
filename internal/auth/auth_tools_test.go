@@ -2,6 +2,7 @@ package auth
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -89,5 +90,37 @@ func TestCreateValidateJWT(t *testing.T) {
 			continue
 		}
 		continue
+	}
+}
+
+func TestGetBearer(t *testing.T) {
+	cases := []struct {
+		input      string
+		authHeader bool
+		expected   string
+	}{
+		{
+			input:      "Bearer test",
+			authHeader: true,
+			expected:   "test",
+		},
+		{
+			input:      "Bearer test",
+			authHeader: false,
+			expected:   "",
+		},
+	}
+
+	for _, c := range cases {
+		headers := http.Header{}
+		headers.Add("Other-Header", "test")
+		if c.authHeader {
+			headers.Add("Authorization", c.input)
+		}
+		token, err := GetBearerToken(headers)
+		if err != nil && token != c.expected {
+			t.Errorf("Error while getting Bearer Token: %s", err)
+			continue
+		}
 	}
 }

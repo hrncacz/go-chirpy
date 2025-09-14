@@ -147,20 +147,31 @@ func getChirpsOne(cfg *apiConfig) http.HandlerFunc {
 func createChirp(cfg *apiConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type reqBody struct {
-			Body   string    `json:"body"`
-			UserID uuid.UUID `json:"user_id"`
+			Body string `json:"body"`
+		}
+
+		token, err := auth.GetBearerToken(r.Header)
+		if err != nil {
+			errorMessage := "Unauthorized"
+			responseError(w, errorMessage, 401)
+			return
+		}
+		userID, err := auth.ValidateJWT(token, cfg.jwtSignString)
+		if err != nil {
+			errorMessage := "Unauthorized"
+			responseError(w, errorMessage, 401)
+			return
 		}
 
 		decoder := json.NewDecoder(r.Body)
 		req := reqBody{}
-		err := decoder.Decode(&req)
+		err = decoder.Decode(&req)
 		if err != nil {
 			fmt.Println(err)
 			errorMessage := "Something went wrong"
 			responseError(w, errorMessage, http.StatusBadRequest)
 			return
 		}
-
 		if len(req.Body) > 140 {
 			errorMessage := "Chirp is too long"
 			responseError(w, errorMessage, 400)
@@ -169,7 +180,7 @@ func createChirp(cfg *apiConfig) http.HandlerFunc {
 
 		chirp, err := cfg.db.CreateChirp(r.Context(), database.CreateChirpParams{
 			Body:   req.Body,
-			UserID: req.UserID,
+			UserID: userID,
 		})
 		if err != nil {
 			fmt.Println(err)
@@ -193,14 +204,16 @@ func createChirp(cfg *apiConfig) http.HandlerFunc {
 func login(cfg *apiConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		type reqBody struct {
-			Email    string `json:"email"`
-			Password string `json:"password"`
+			Email            string `json:"email"`
+			Password         string `json:"password"`
+			ExpiresInSeconds int    `json:"expires_in_seconds"`
 		}
 		type resBody struct {
 			ID        uuid.UUID `json:"id"`
 			CreatedAt time.Time `json:"created_at"`
 			UpdatedAt time.Time `json:"updated_at"`
 			Email     string    `json:"email"`
+			Token     string    `json:"token"`
 		}
 		decoder := json.NewDecoder(r.Body)
 		req := reqBody{}
@@ -221,11 +234,23 @@ func login(cfg *apiConfig) http.HandlerFunc {
 			responseError(w, errorMessage, 401)
 			return
 		}
+		if req.ExpiresInSeconds == 0 {
+			req.ExpiresInSeconds = 3600
+		} else if req.ExpiresInSeconds > 3600 {
+			req.ExpiresInSeconds = 3600
+		}
+		jwtToken, err := auth.MakeJWT(user.ID, cfg.jwtSignString, time.Duration(req.ExpiresInSeconds*int(time.Second)))
+		if err != nil {
+			errorMessage := "JWT issue"
+			responseError(w, errorMessage, 500)
+			return
+		}
 		res := resBody{
 			ID:        user.ID,
 			CreatedAt: user.CreatedAt,
 			UpdatedAt: user.UpdatedAt,
 			Email:     user.Email,
+			Token:     jwtToken,
 		}
 		data, err := json.Marshal(res)
 		if err != nil {
