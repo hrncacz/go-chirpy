@@ -23,6 +23,7 @@ func login(cfg *apiConfig) http.HandlerFunc {
 			Email        string    `json:"email"`
 			Token        string    `json:"token"`
 			RefreshToken string    `json:"refresh_token"`
+			IsChirpyRed  bool      `json:"is_chirpy_red"`
 		}
 		decoder := json.NewDecoder(r.Body)
 		req := reqBody{}
@@ -74,6 +75,7 @@ func login(cfg *apiConfig) http.HandlerFunc {
 			Email:        user.Email,
 			Token:        jwtToken,
 			RefreshToken: refreshToken,
+			IsChirpyRed:  user.IsChirpyRed,
 		}
 		data, err := json.Marshal(res)
 		if err != nil {

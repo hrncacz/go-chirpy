@@ -19,10 +19,11 @@ func createUser(cfg *apiConfig) http.HandlerFunc {
 		}
 
 		type resBody struct {
-			ID        uuid.UUID `json:"id"`
-			CreatedAt time.Time `json:"created_at"`
-			UpdatedAt time.Time `json:"updated_at"`
-			Email     string    `json:"email"`
+			ID          uuid.UUID `json:"id"`
+			CreatedAt   time.Time `json:"created_at"`
+			UpdatedAt   time.Time `json:"updated_at"`
+			Email       string    `json:"email"`
+			IsChirpyRed bool      `json:"is_chirpy_red"`
 		}
 
 		decoder := json.NewDecoder(r.Body)
@@ -55,10 +56,11 @@ func createUser(cfg *apiConfig) http.HandlerFunc {
 			return
 		}
 		res := resBody{
-			ID:        user.ID,
-			CreatedAt: user.CreatedAt,
-			UpdatedAt: user.UpdatedAt,
-			Email:     user.Email,
+			ID:          user.ID,
+			CreatedAt:   user.CreatedAt,
+			UpdatedAt:   user.UpdatedAt,
+			Email:       user.Email,
+			IsChirpyRed: user.IsChirpyRed,
 		}
 		data, err := json.Marshal(res)
 		if err != nil {

@@ -98,11 +98,13 @@ func main() {
 	mux.HandleFunc("POST /api/users", createUser(apiCfg))
 	mux.HandleFunc("GET /api/chirps", getChirpsAll(apiCfg))
 	mux.HandleFunc("GET /api/chirps/{chirpID}", getChirpsOne(apiCfg))
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", deleteChirp(apiCfg))
 	mux.HandleFunc("POST /api/chirps", createChirp(apiCfg))
 	mux.HandleFunc("POST /api/login", login(apiCfg))
 	mux.HandleFunc("POST /api/refresh", refresh(apiCfg))
 	mux.HandleFunc("POST /api/revoke", revoke(apiCfg))
 	mux.HandleFunc("PUT /api/users", changeEmailPassword(apiCfg))
+	mux.HandleFunc("POST /api/polka/webhooks", eventUserUpgraded(apiCfg))
 
 	defer httpServer.Close()
 

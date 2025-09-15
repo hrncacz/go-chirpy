@@ -115,3 +115,48 @@ func createChirp(cfg *apiConfig) http.HandlerFunc {
 
 	}
 }
+
+func deleteChirp(cfg *apiConfig) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token, err := auth.GetBearerToken(r.Header)
+		if err != nil {
+			errorMessage := "Unauthorized"
+			responseError(w, errorMessage, 401)
+			return
+		}
+		userID, err := auth.ValidateJWT(token, cfg.jwtSignString)
+		if err != nil {
+			errorMessage := "Unauthorized"
+			responseError(w, errorMessage, 401)
+			return
+		}
+
+		chirpIDString := r.PathValue("chirpID")
+		chirpID, err := uuid.Parse(chirpIDString)
+		if err != nil {
+			errorMessage := "Invalid chirp ID"
+			responseError(w, errorMessage, 400)
+			return
+		}
+		chirps, err := cfg.db.GetChirpsOne(r.Context(), chirpID)
+		if err != nil {
+			errorMessage := fmt.Sprintf("Chirp was not found: %s", chirpIDString)
+			responseError(w, errorMessage, 404)
+			return
+		}
+		if userID != chirps.UserID {
+			errorMessage := "user is not owner of chirp"
+			responseError(w, errorMessage, 403)
+			return
+		}
+		if err = cfg.db.DeleteChirpById(r.Context(), database.DeleteChirpByIdParams{
+			ID:     chirpID,
+			UserID: userID,
+		}); err != nil {
+			errorMessage := fmt.Sprintf("Chirp was not deleted: %s", chirpIDString)
+			responseError(w, errorMessage, 404)
+			return
+		}
+		w.WriteHeader(204)
+	}
+}
