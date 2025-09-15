@@ -102,6 +102,7 @@ func main() {
 	mux.HandleFunc("POST /api/login", login(apiCfg))
 	mux.HandleFunc("POST /api/refresh", refresh(apiCfg))
 	mux.HandleFunc("POST /api/revoke", revoke(apiCfg))
+	mux.HandleFunc("PUT /api/users", changeEmailPassword(apiCfg))
 
 	defer httpServer.Close()
 
