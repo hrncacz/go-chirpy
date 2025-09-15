@@ -12,12 +12,32 @@ import (
 
 func getChirpsAll(cfg *apiConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		chirps, err := cfg.db.GetChirpsAll(r.Context())
-		if err != nil {
-			fmt.Println(err)
-			errorMessage := "Cannot retrieve chirps"
-			responseError(w, errorMessage, 500)
-			return
+		authorID := r.URL.Query().Get("author_id")
+		var chirps []database.Chirp
+		var err error
+		if len(authorID) > 0 {
+			authorUUID, err := uuid.Parse(authorID)
+			if err != nil {
+				fmt.Println(err)
+				errorMessage := "Invalid authorID"
+				responseError(w, errorMessage, 401)
+				return
+			}
+			chirps, err = cfg.db.GetChirpsAllByUserID(r.Context(), authorUUID)
+			if err != nil {
+				fmt.Println(err)
+				errorMessage := "No chirps found"
+				responseError(w, errorMessage, 401)
+				return
+			}
+		} else {
+			chirps, err = cfg.db.GetChirpsAll(r.Context())
+			if err != nil {
+				fmt.Println(err)
+				errorMessage := "Cannot retrieve chirps"
+				responseError(w, errorMessage, 500)
+				return
+			}
 		}
 		data, err := json.Marshal(chirps)
 		if err != nil {
