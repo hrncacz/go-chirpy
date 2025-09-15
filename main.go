@@ -20,6 +20,7 @@ type apiConfig struct {
 	dev            bool
 	jwtSignString  string
 	jwtExpiration  time.Duration
+	polkaAPIKey    string
 }
 
 func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
@@ -63,6 +64,7 @@ func main() {
 	}
 	dbURL := os.Getenv("DB_URL")
 	jwtSecret := os.Getenv("JWT_SECRET")
+	polkaAPIKey := os.Getenv("POLKA_API")
 	dev := os.Getenv("PLATFORM")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -75,6 +77,7 @@ func main() {
 		dev:            false,
 		jwtSignString:  jwtSecret,
 		jwtExpiration:  1 * time.Hour,
+		polkaAPIKey:    polkaAPIKey,
 	}
 	if dev == "dev" {
 		apiCfg.dev = true

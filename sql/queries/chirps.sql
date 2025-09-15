@@ -15,6 +15,9 @@ DELETE FROM chirps;
 -- name: GetChirpsAll :many
 SELECT * FROM chirps ORDER BY created_at ASC;
 
+-- name: GetChirpsAllByUserID :many
+SELECT * FROM chirps WHERE user_id = $1 ORDER BY created_at ASC;
+
 -- name: GetChirpsOne :one
 SELECT * FROM chirps WHERE id = $1;
 

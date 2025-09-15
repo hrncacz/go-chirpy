@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/hrncacz/go-chirpy/internal/auth"
 )
 
 func eventUserUpgraded(cfg *apiConfig) http.HandlerFunc {
@@ -14,6 +15,17 @@ func eventUserUpgraded(cfg *apiConfig) http.HandlerFunc {
 			Data  struct {
 				UserID uuid.UUID `json:"user_id"`
 			} `json:"data"`
+		}
+		apiKey, err := auth.GetAPIKey(r.Header)
+		if err != nil {
+			errorMessage := "Invalid header"
+			responseError(w, errorMessage, 401)
+			return
+		}
+		if apiKey != cfg.polkaAPIKey {
+			errorMessage := "Invalid API key"
+			responseError(w, errorMessage, 401)
+			return
 		}
 		decoder := json.NewDecoder(r.Body)
 		req := reqBody{}
