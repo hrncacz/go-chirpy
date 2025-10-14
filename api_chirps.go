@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 
 	"github.com/google/uuid"
 	"github.com/hrncacz/go-chirpy/internal/auth"
@@ -13,6 +14,7 @@ import (
 func getChirpsAll(cfg *apiConfig) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authorID := r.URL.Query().Get("author_id")
+		sortChirps := r.URL.Query().Get("sort")
 		var chirps []database.Chirp
 		var err error
 		if len(authorID) > 0 {
@@ -38,6 +40,9 @@ func getChirpsAll(cfg *apiConfig) http.HandlerFunc {
 				responseError(w, errorMessage, 500)
 				return
 			}
+		}
+		if sortChirps == "desc" {
+			sort.Slice(chirps, func(a, b int) bool { return chirps[a].CreatedAt.After(chirps[b].CreatedAt) })
 		}
 		data, err := json.Marshal(chirps)
 		if err != nil {
